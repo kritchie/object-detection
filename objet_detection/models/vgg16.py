@@ -27,10 +27,11 @@ class VGG16(object):
 
     @staticmethod
     def biases(dims):
-        return tf.constant(shape=dims, name='biases')
+        return tf.constant(0., shape=[dims], name='biases', dtype=tf.float32)
 
     def conv2d(self, input, dims):
-        conv2d = tf.nn.conv2d(input, filter=self.weights(dims), strides=[1, 1, 1, 1]) + self.biases(dims)
+        conv2d = tf.nn.conv2d(input, filter=self.weights(dims),
+                              strides=[1, 1, 1, 1], padding='SAME') + self.biases(dims[-1])
 
         """
         Notes on Batch Norm for tensorflow
@@ -43,11 +44,11 @@ class VGG16(object):
         for simple batch normalization pass axes=[0] (batch only).
         """
         mean, variance = tf.nn.moments(conv2d, axes=[0, 1, 2])
-        bn = tf.nn.batch_normalization(conv2d, mean, variance)
+        bn = tf.nn.batch_normalization(conv2d, mean, variance, offset=None, scale=None, variance_epsilon=0.001)
         return tf.nn.relu(bn, name='relu')
 
     def pooling(self, input):
-        return tf.nn.max_pool(input, strides=[1, 2, 2, 1], name='max_pool2x2')
+        return tf.nn.max_pool(input, strides=[1, 2, 2, 1], ksize=[1, 2, 2, 1], padding='SAME', name='max_pool2x2')
 
     def loss(self, logits):
         with tf.name_scope('loss'):
@@ -66,29 +67,29 @@ class VGG16(object):
     def network(self):
 
         with tf.name_scope('block1'):
-            conv = self.conv2d(self.x, dims=[3, 3, 64])
-            conv = self.conv2d(conv, dims=[3, 3, 64])
+            conv = self.conv2d(self.x, dims=[3, 3, 3, 64])
+            conv = self.conv2d(conv, dims=[3, 3, 64, 64])
             pool = self.pooling(conv)
 
         with tf.name_scope('block2'):
-            conv = self.conv2d(pool, dims=[3, 3, 128])
-            conv = self.conv2d(conv, dims=[3, 3, 128])
+            conv = self.conv2d(pool, dims=[3, 3, 64, 128])
+            conv = self.conv2d(conv, dims=[3, 3, 128, 128])
             pool = self.pooling(conv)
 
         with tf.name_scope('block3'):
-            conv = self.conv2d(pool, dims=[3, 3, 256])
-            conv = self.conv2d(conv, dims=[3, 3, 256])
-            conv = self.conv2d(conv, dims=[3, 3, 256])
+            conv = self.conv2d(pool, dims=[3, 3, 128, 256])
+            conv = self.conv2d(conv, dims=[3, 3, 256, 256])
+            conv = self.conv2d(conv, dims=[3, 3, 256, 256])
             pool = self.pooling(conv)
 
         with tf.name_scope('block4'):
-            conv = self.conv2d(pool, dims=[3, 3, 512])
-            conv = self.conv2d(conv, dims=[3, 3, 512])
+            conv = self.conv2d(pool, dims=[3, 3, 256, 512])
+            conv = self.conv2d(conv, dims=[3, 3, 512, 512])
             pool = self.pooling(conv)
 
         with tf.name_scope('block5'):
-            conv = self.conv2d(pool, dims=[3, 3, 512])
-            conv = self.conv2d(conv, dims=[3, 3, 512])
+            conv = self.conv2d(pool, dims=[3, 3, 512, 512])
+            conv = self.conv2d(conv, dims=[3, 3, 512, 512])
             pool = self.pooling(conv)
 
         with tf.name_scope('fc'):
