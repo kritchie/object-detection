@@ -4,9 +4,9 @@
 import tensorflow as tf
 
 
-class VGG16(object):
+class SSDVGG16(object):
     """
-    VGGNet with 16 weight layers. Images will be cropped to a resolution of 640x480 pixels.
+    SSD with VGGNet with 16 weight layers. Images will be cropped to a resolution of 640x480 pixels.
     Images are RGB (3 channels)
     """
 
@@ -14,8 +14,9 @@ class VGG16(object):
         self.width = 640
         self.height = 480
         self.channels = 3
+        self.num_classes = 2
         self.x = tf.placeholder(shape=[None, self.height, self.width, self.channels], dtype=tf.float32)
-        tf.summary.image('input', self.x)
+        tf.Summary.image('input', self.x)
 
         self.y = tf.placeholder(shape=[None, self.height, self.width, self.channels], dtype=tf.float32)
 
@@ -40,8 +41,8 @@ class VGG16(object):
         
         When using these moments for batch normalization (see tf.nn.batch_normalization):
 
-        for so-called "global normalization", used with convolutional filters with shape [batch, height, width, depth], pass axes=[0, 1, 2].
-        for simple batch normalization pass axes=[0] (batch only).
+        for so-called "global normalization", used with convolutional filters with shape [batch, height, width, depth], 
+        pass axes=[0, 1, 2]. for simple batch normalization pass axes=[0] (batch only).
         """
         mean, variance = tf.nn.moments(conv2d, axes=[0, 1, 2])
         bn = tf.nn.batch_normalization(conv2d, mean, variance, offset=None, scale=None, variance_epsilon=0.001)
@@ -50,9 +51,9 @@ class VGG16(object):
     def pooling(self, input):
         return tf.nn.max_pool(input, strides=[1, 2, 2, 1], ksize=[1, 2, 2, 1], padding='SAME', name='max_pool2x2')
 
-    def loss(self, logits):
+    def loss(self, _in):
         with tf.name_scope('loss'):
-            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits), name='xentropy')
+            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self._in), name='xentropy')
             tf.summary.scalar('loss', loss)
         return loss
 
@@ -64,7 +65,7 @@ class VGG16(object):
         tf.summary.scalar('accuracy', accuracy)
         return accuracy
 
-    def network(self):
+    def build(self):
 
         with tf.name_scope('block1'):
             conv = self.conv2d(self.x, dims=[3, 3, 3, 64])
@@ -92,10 +93,11 @@ class VGG16(object):
             conv = self.conv2d(conv, dims=[3, 3, 512, 512])
             pool = self.pooling(conv)
 
+        # We remove the full connection
         with tf.name_scope('fc'):
             fc = tf.reshape(pool, [-1, 40 * 15 * 512])
             fc = tf.layers.dense(fc, units=4096, activation=tf.nn.relu)
             fc = tf.layers.dense(fc, units=4096, activation=tf.nn.relu)
-            fc = tf.layers.dense(fc, units=1000, activation=tf.nn.relu)
+            fc = tf.layers.dense(fc, units=self.num_classes, activation=None)
 
         return fc

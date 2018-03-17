@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from objet_detection.models.vgg16 import VGG16
+import tensorflow as tf
+from objet_detection.models.vgg16 import SSDVGG16
 
 if __name__ == '__main__':
-    model = VGG16()
-    nn = model.network()
-    trainable = model.loss
-    testable = model.accuracy
+
+    model = SSDVGG16()
+
+    nn = model.build()
+
+    trainable = model.loss(nn)
+    testable = model.accuracy()
